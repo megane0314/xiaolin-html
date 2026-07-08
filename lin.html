@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💌 滿屏關心彈窗</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 20% 30%, #ffe4f0 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, #d4eeff 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, #fff5e0 0%, transparent 70%),
+                #fff8fb;
+    cursor: crosshair;
+    user-select: none;
+  }
+
+  /* floating hearts background */
+  .bg-heart {
+    position: fixed;
+    font-size: 20px;
+    opacity: 0.08;
+    animation: driftHeart linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes driftHeart {
+    0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+    5%   { opacity: 0.08; }
+    95%  { opacity: 0.08; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* popup bubble */
+  .popup {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+    animation: floatUp var(--dur, 4s) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    z-index: 100;
+  }
+
+  .popup .emoji { font-size: 18px; line-height: 1; }
+
+  @keyframes floatUp {
+    0%   { opacity: 0; transform: translateY(30px) scale(0.5) rotate(var(--rot)); }
+    12%  { opacity: 1; transform: translateY(-10px) scale(1.08) rotate(var(--rot)); }
+    85%  { opacity: 1; transform: translateY(var(--rise)) scale(1) rotate(calc(var(--rot) * -0.3)); }
+    100% { opacity: 0; transform: translateY(calc(var(--rise) - 20px)) scale(0.95) rotate(0deg); }
+  }
+
+  /* UI controls */
+  #ui {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,180,210,0.4);
+    border-radius: 999px;
+    padding: 10px 20px;
+    box-shadow: 0 8px 32px rgba(200,100,150,0.15);
+    z-index: 200;
+  }
+
+  #ui label { font-size: 13px; color: #b06080; font-weight: 500; }
+  #ui span   { font-size: 13px; font-weight: 700; color: #c0507a; min-width: 18px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 90px;
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #f8a8c8, #e06090);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #e06090;
+    box-shadow: 0 2px 8px rgba(200,80,130,0.4);
+    cursor: pointer;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .btn:active { transform: scale(0.94); }
+
+  .btn-pause {
+    background: #fff0f6;
+    color: #c0507a;
+    border: 1.5px solid #f8c0d8;
+  }
+  .btn-burst {
+    background: linear-gradient(135deg, #ff8fb0, #e05080);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(224,80,128,0.35);
+  }
+  .btn-burst:hover { box-shadow: 0 6px 20px rgba(224,80,128,0.5); }
+
+  /* hint */
+  #hint {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    transition: opacity 0.6s;
+  }
+  #hint .big { font-size: 52px; margin-bottom: 12px; }
+  #hint p { font-size: 16px; color: #c07090; font-weight: 500; }
+  #hint small { font-size: 13px; color: #d0a0b8; display: block; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div id="hint">
+  <div class="big">💌</div>
+  <p>點擊任意位置，送出關心</p>
+  <small>或者等待自動飄出～</small>
+</div>
+
+<div id="ui">
+  <label for="speed">速度</label>
+  <input type="range" id="speed" min="1" max="5" value="3" step="1">
+  <span id="speedLabel">3</span>
+  <button class="btn btn-pause" id="toggleBtn" onclick="toggleAuto()">⏸ 暫停</button>
+  <button class="btn btn-burst" onclick="burst()">💥 一鍵爆炸</button>
+</div>
+
+<script>
+const MESSAGES = [
+  { text: "你今天吃飯了嗎",  emoji: "🍚", bg: "#FFD6E8", color: "#8A1040" },
+  { text: "記得喝水哦",      emoji: "💧", bg: "#D6EEFF", color: "#0A4A80" },
+  { text: "你最棒了",        emoji: "⭐", bg: "#FFF3CC", color: "#7A5000" },
+  { text: "注意休息",        emoji: "🌙", bg: "#EAD6FF", color: "#52108A" },
+  { text: "別太累啦",        emoji: "❤️", bg: "#FFD6D6", color: "#8A1010" },
+  { text: "今天也很厲害",    emoji: "🔥", bg: "#FFE8D6", color: "#8A3800" },
+  { text: "記得開心",        emoji: "😄", bg: "#D6FFE8", color: "#0A5A30" },
+  { text: "我在支持你",      emoji: "💪", bg: "#D6F0FF", color: "#0A3A70" },
+  { text: "你很重要",        emoji: "🌟", bg: "#FFF0D6", color: "#7A4500" },
+  { text: "抱抱你",          emoji: "🤗", bg: "#FFD6EE", color: "#8A0050" },
+  { text: "天氣好嗎",        emoji: "☀️", bg: "#FFFBD6", color: "#6A5000" },
+  { text: "辛苦了",          emoji: "🌸", bg: "#F5D6FF", color: "#60088A" },
+  { text: "吃點零食休息",    emoji: "🍩", bg: "#FFE0D6", color: "#7A2000" },
+  { text: "想你了",          emoji: "💌", bg: "#FFD6F5", color: "#7A0058" },
+  { text: "加油加油",        emoji: "🚀", bg: "#D6FFFB", color: "#004840" },
+  { text: "保重身體",        emoji: "💊", bg: "#D6FFD6", color: "#0A500A" },
+  { text: "你笑起來好好看",  emoji: "🥰", bg: "#FFE4F4", color: "#8A1060" },
+  { text: "今天要好好的哦",  emoji: "🌈", bg: "#E4F4FF", color: "#0A3A70" },
+  { text: "有我在不用怕",    emoji: "🛡️", bg: "#F4FFE4", color: "#2A5A0A" },
+  { text: "你做得很好",      emoji: "👏", bg: "#FFEED6", color: "#7A4000" },
+];
+
+const BG_EMOJIS = ["❤️","🌸","✨","💕","🌟","💫","🎀","🌺","💝"];
+let running = true;
+let timer;
+
+function spawnBgHearts() {
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('div');
+    el.className = 'bg-heart';
+    el.textContent = BG_EMOJIS[Math.floor(Math.random() * BG_EMOJIS.length)];
+    el.style.left = (Math.random() * 100) + 'vw';
+    el.style.fontSize = (14 + Math.random() * 20) + 'px';
+    const dur = 10 + Math.random() * 18;
+    el.style.animationDuration = dur + 's';
+    el.style.animationDelay = -(Math.random() * dur) + 's';
+    document.body.appendChild(el);
+  }
+}
+
+function spawnAt(cx, cy) {
+  document.getElementById('hint').style.opacity = '0';
+  const m = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+  const el = document.createElement('div');
+  el.className = 'popup';
+  el.innerHTML = `<span class="emoji">${m.emoji}</span>${m.text}`;
+  el.style.background = m.bg;
+  el.style.color = m.color;
+
+  const rot = (Math.random() - 0.5) * 22;
+  const speedVal = parseInt(document.getElementById('speed').value);
+  const dur = (2.5 + (6 - speedVal) * 0.5 + Math.random() * 1.2).toFixed(2);
+  const rise = -(140 + Math.random() * 220);
+  el.style.setProperty('--rot', rot + 'deg');
+  el.style.setProperty('--dur', dur + 's');
+  el.style.setProperty('--rise', rise + 'px');
+
+  // position
+  const pw = 220, ph = 50;
+  const x = Math.max(10, Math.min(window.innerWidth - pw, cx - pw / 2));
+  const y = Math.max(10, Math.min(window.innerHeight - 120, cy - ph / 2));
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function spawnRandom() {
+  const x = 60 + Math.random() * (window.innerWidth - 120);
+  const y = 80 + Math.random() * (window.innerHeight - 200);
+  spawnAt(x, y);
+}
+
+function getInterval() {
+  const v = parseInt(document.getElementById('speed').value);
+  return 1600 - v * 240;
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(spawnRandom, getInterval());
+}
+
+function toggleAuto() {
+  running = !running;
+  document.getElementById('toggleBtn').textContent = running ? '⏸ 暫停' : '▶ 繼續';
+  running ? startTimer() : clearInterval(timer);
+}
+
+function burst() {
+  for (let i = 0; i < 22; i++) setTimeout(spawnRandom, i * 55);
+}
+
+document.getElementById('speed').addEventListener('input', function() {
+  document.getElementById('speedLabel').textContent = this.value;
+  if (running) startTimer();
+});
+
+document.body.addEventListener('click', (e) => {
+  if (e.target.closest('#ui')) return;
+  spawnAt(e.clientX, e.clientY);
+});
+
+spawnBgHearts();
+startTimer();
+[200, 600, 1100].forEach(d => setTimeout(spawnRandom, d));
+</script>
+</body>
+</html>
